@@ -25,11 +25,38 @@ class ramenImg {
   }
 }
 
+class submitRamen {
+  constructor() {
+    this.name = document.getElementById('new-name').value;
+    this.restaurant = document.getElementById('new-restaurant').value;
+    this.image = document.getElementById('new-image').value;
+    this.rating = document.getElementById('new-rating').value;
+    this.comment = document.getElementById('new-comment').value;
+  }
+}
+
 // admin functions
 
 function addSubmitListener() {
   const form = document.getElementById('new-ramen');
-  form.addEventListener('submit', event => handleClick(event))
+  form.addEventListener('submit', event => handleSubmit(event))
+}
+
+function handleDisplay(ramenData) {
+  let bestRated;
+
+  for (const ramen of ramenData) {
+    if (!bestRated || ramen.rating > bestRated.rating) bestRated = ramen;
+    appendImagesToMenu(ramen);
+  }
+
+  detailUpdate(bestRated);
+}
+
+function handleSubmit(event) {
+  event.preventDefault();
+  appendImagesToMenu(new submitRamen());
+  event.target.reset();
 }
 
 function appendImagesToMenu(ramenObj) {
@@ -53,20 +80,20 @@ function detailUpdate(ramenObj) {
 function displayRamens() {
   fetch(apiAddr)
     .then(res => res.json())
-    .then(ramenData => {
-      let bestRated;
-      for (const ramen of ramenData) {
-        if (!bestRated || ramen.rating > bestRated.rating) bestRated = ramen;
-        appendImagesToMenu(ramen);
-      }
-      detailUpdate(bestRated);
-    })
+    .then(ramenData => handleDisplay(ramenData))
+}
+
+function getRamenDetail(id) {
+  fetch(`${apiAddr}/${id}`)
+  .then(res => res.json())
+  .then(ramenData => detailUpdate(ramenData))
 }
 
 // callback functions
 
-const handleClick = (ramen) => {
-  // Add code
+const handleClick = (event) => {
+  const ramenId = parseInt(event.target.id.slice(6));
+  getRamenDetail(ramenId);  
 }
 
 document.addEventListener('DOMContentLoaded', main());
