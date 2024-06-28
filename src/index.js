@@ -9,31 +9,8 @@ function main() {
   displayRamens();
 }
 
-// classes
-
-class ramenImg {
-  constructor(ramenObj) {
-    this.image = document.createElement('img');
-    this.image.id = `ramen-${ramenObj.id}`;
-    this.image.className = 'menu-image';
-    this.image.title = `${ramenObj.name} (${ramenObj.restaurant}) :: ${ramenObj.rating}/10`;
-    this.image.src = ramenObj.image;
-    this.image.addEventListener('click', event => handleClick(event));
-  }
-  render() {
-    return this.image;
-  }
-}
-
-class submitRamen {
-  constructor() {
-    this.name = document.getElementById('new-name').value;
-    this.restaurant = document.getElementById('new-restaurant').value;
-    this.image = document.getElementById('new-image').value;
-    this.rating = document.getElementById('new-rating').value;
-    this.comment = document.getElementById('new-comment').value;
-  }
-}
+// global variables
+let idCount;
 
 // admin functions
 
@@ -42,37 +19,52 @@ function addSubmitListener() {
   form.addEventListener('submit', event => handleSubmit(event))
 }
 
-function handleDisplay(ramenData) {
-  let bestRated;
-
-  for (const ramen of ramenData) {
-    if (!bestRated || ramen.rating > bestRated.rating) bestRated = ramen;
-    appendImagesToMenu(ramen);
-  }
-
-  detailUpdate(bestRated);
+function handleInitialDisplay(ramenData) {
+  idCount = ramenData.length;
+  ramenData.forEach(ramen => appendToMenu(ramen))
+  detailUpdate(ramenData[0]);
 }
 
 function handleSubmit(event) {
   event.preventDefault();
-  appendImagesToMenu(new submitRamen());
+  appendToMenu(buildRamenObj());
   event.target.reset();
 }
 
-function appendImagesToMenu(ramenObj) {
+function appendToMenu(ramen) {
   const ramenMenu = document.getElementById('ramen-menu');
-  ramenMenu.appendChild(new ramenImg(ramenObj).render());
+  ramenMenu.appendChild(buildRamenImage(ramen));
 }
 
-function detailUpdate(ramenObj) {
+function detailUpdate(ramen) {
 
   // assign values for the selected option to the corresponding DOM elements
 
-  document.querySelector('img.detail-image').src = ramenObj.image;
-  document.querySelector('h2.name').innerText = ramenObj.name;
-  document.querySelector('h3.restaurant').innerText = ramenObj.restaurant;
-  document.getElementById('rating-display').innerText = ramenObj.rating;
-  document.getElementById('comment-display').innerText = ramenObj.comment;
+  document.querySelector('img.detail-image').src = ramen.image;
+  document.querySelector('h2.name').innerText = ramen.name;
+  document.querySelector('h3.restaurant').innerText = ramen.restaurant;
+  document.getElementById('rating-display').innerText = ramen.rating;
+  document.getElementById('comment-display').innerText = ramen.comment;
+}
+
+// builder functions
+
+function buildRamenImage(ramen) {
+  const ramenImage = document.createElement('img');
+  ramenImage.id = `ramen-${ramen.id}`;
+  ramenImage.src = ramen.image;
+  ramenImage.addEventListener('click', event => handleClick(event));
+  return ramenImage;
+}
+
+function buildRamenObj() {
+  const ramenObj = {};
+  ramenObj.id = idCount + 1
+  ramenObj.name = document.getElementById('new-name').value;
+  ramenObj.restaurant = document.getElementById('new-restaurant').value;
+  ramenObj.image = document.getElementById('new-image').value;
+  ramenObj.rating = document.getElementById('new-rating').value;
+  ramenObj.comment = document.getElementById('new-comment').value;
 }
 
 // server interaction functions
@@ -80,7 +72,7 @@ function detailUpdate(ramenObj) {
 function displayRamens() {
   fetch(apiAddr)
     .then(res => res.json())
-    .then(ramenData => handleDisplay(ramenData))
+    .then(ramenData => handleInitialDisplay(ramenData))
 }
 
 function getRamenDetail(id) {
