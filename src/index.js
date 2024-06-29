@@ -1,6 +1,7 @@
-// base API URL
+// global variables
 
 const apiAddr = 'http://localhost:3000/ramens';
+let idCount;
 
 // main function
 
@@ -9,62 +10,52 @@ function main() {
   displayRamens();
 }
 
-// global variables
-let idCount;
+// callback functions
+
+const handleClick = event => {
+  const ramen = {...event.target.dataset, image: event.target.src};
+  detailUpdate(ramen);
+}
+
+const handleSubmit = event => {
+  event.preventDefault();
+  const ramen = new MenuItem(newRamenData()).render()
+  appendToMenu(ramen);
+  event.target.reset();
+}
 
 // admin functions
 
 function addSubmitListener() {
   const form = document.getElementById('new-ramen');
-  form.addEventListener('submit', event => handleSubmit(event))
+  form.addEventListener('submit', handleSubmit)
 }
 
-function handleInitialDisplay(ramenData) {
-  idCount = ramenData.length;
-  ramenData.forEach(ramen => appendToMenu(ramen))
-  detailUpdate(ramenData[0]);
-}
-
-function handleSubmit(event) {
-  event.preventDefault();
-  appendToMenu(buildRamenObj());
-  event.target.reset();
+function handleInitialDisplay(serverData) {
+  idCount = serverData.length;
+  serverData.forEach(ramen => appendToMenu(new MenuItem(ramen).render()));
+  detailUpdate(serverData[0]);
 }
 
 function appendToMenu(ramen) {
   const ramenMenu = document.getElementById('ramen-menu');
-  ramenMenu.appendChild(buildRamenImage(ramen));
+  ramenMenu.append(ramen);
 }
 
 function detailUpdate(ramen) {
-
-  // assign values for the selected option to the corresponding DOM elements
-
   document.querySelector('img.detail-image').src = ramen.image;
   document.querySelector('h2.name').innerText = ramen.name;
   document.querySelector('h3.restaurant').innerText = ramen.restaurant;
-  document.getElementById('rating-display').innerText = ramen.rating;
+  document.getElementById('rating-display').innerText = String(ramen.rating);
   document.getElementById('comment-display').innerText = ramen.comment;
 }
 
-// builder functions
-
-function buildRamenImage(ramen) {
-  const ramenImage = document.createElement('img');
-  ramenImage.id = `ramen-${ramen.id}`;
-  ramenImage.src = ramen.image;
-  ramenImage.addEventListener('click', event => handleClick(event));
-  return ramenImage;
-}
-
-function buildRamenObj() {
-  const ramenObj = {};
-  ramenObj.id = idCount + 1
-  ramenObj.name = document.getElementById('new-name').value;
-  ramenObj.restaurant = document.getElementById('new-restaurant').value;
-  ramenObj.image = document.getElementById('new-image').value;
-  ramenObj.rating = document.getElementById('new-rating').value;
-  ramenObj.comment = document.getElementById('new-comment').value;
+function newRamenData() {
+  const inputNodes = document.querySelectorAll('#new-ramen input:not([type="submit"]), #new-ramen textarea');
+  const formData = new FormDataObj(inputNodes);
+  formData.id = idCount + 1;
+  idCount++;
+  return formData;
 }
 
 // server interaction functions
@@ -72,7 +63,7 @@ function buildRamenObj() {
 function displayRamens() {
   fetch(apiAddr)
     .then(res => res.json())
-    .then(ramenData => handleInitialDisplay(ramenData))
+    .then(data => handleInitialDisplay(data))
 }
 
 function getRamenDetail(id) {
@@ -81,14 +72,28 @@ function getRamenDetail(id) {
   .then(ramenData => detailUpdate(ramenData))
 }
 
-// callback functions
+// classes
 
-const handleClick = (event) => {
-  const ramenId = parseInt(event.target.id.slice(6));
-  getRamenDetail(ramenId);  
+class MenuItem {
+  constructor(data) {
+    this.item = document.createElement('img');
+    this.item.src = data.image;
+    const {image: _, ...datasetObj} = data;
+    for (const key in datasetObj) this.item.dataset[key] = datasetObj[key];
+    this.item.addEventListener('click', handleClick)
+  }
+  render() {
+    return this.item;
+  }
 }
 
-document.addEventListener('DOMContentLoaded', main());
+class FormDataObj {
+  constructor(formData) {
+    Array.from(formData).forEach(element => this[element.id.substring(4)] = element.value)
+  }
+}
+
+document.addEventListener('DOMContentLoaded', main);
 
 // Export functions for testing
 export {
