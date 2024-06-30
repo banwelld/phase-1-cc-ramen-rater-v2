@@ -1,84 +1,147 @@
-// global variables
+// GLOBAL VARIABLES
 
-const apiAddr = 'http://localhost:3000/ramens';
+const serverUrl = 'http://localhost:3000/ramens';
 let idCount;
 
-// main function
+// CALLBACK FUNCTIONS
 
-function main() {
-  addSubmitListener();
-  displayRamens();
-}
-
-// callback functions
-
+// menu item click
 const handleClick = event => {
-  const ramen = {...event.target.dataset, image: event.target.src};
-  detailUpdate(ramen);
+  const ramenData = event.target.dataset;
+  const ramenImgUrl = event.target.src;
+  const ramen = {...ramenData, image: ramenImgUrl};
+  handleAllDetails(ramen);
 }
 
-const handleSubmit = event => {
+const handleSubmitNew = event => {
   event.preventDefault();
-  const ramen = new MenuItem(newRamenData()).render()
-  appendToMenu(ramen);
+  const ramen = new FormDataObj(event.target.id);
+  const ramenElement = new MenuElement(ramen).render();
+  pushNewRamen(ramen);
+  appendToMenu(ramenElement);
   event.target.reset();
 }
 
-// admin functions
+const handleSubmitEdit = event => {
+  event.preventDefault();
+  const edits = new FormDataObj(event.target.id);
+  pushEdits(edits);
+  handleEdits(edits);
+  event.target.reset();
+}
+
+// ADMIN FUNCTIONS
 
 function addSubmitListener() {
-  const form = document.getElementById('new-ramen');
-  form.addEventListener('submit', handleSubmit)
+  const newForm = document.getElementById('new-ramen');
+  newForm.addEventListener('submit', handleSubmitNew);
+
+  const editForm = document.getElementById('edit-ramen');
+  editForm.addEventListener('submit', handleSubmitEdit);
 }
 
 function handleInitialDisplay(serverData) {
   idCount = serverData.length;
-  serverData.forEach(ramen => appendToMenu(new MenuItem(ramen).render()));
-  detailUpdate(serverData[0]);
+  serverData.forEach(ramen => appendToMenu(new MenuElement(ramen).render()));
+  handleAllDetails(serverData[0]);
 }
 
-function appendToMenu(ramen) {
+function appendToMenu(ramenElement) {
   const ramenMenu = document.getElementById('ramen-menu');
-  ramenMenu.append(ramen);
+  ramenMenu.append(ramenElement);
 }
 
-function detailUpdate(ramen) {
-  document.querySelector('img.detail-image').src = ramen.image;
-  document.querySelector('h2.name').innerText = ramen.name;
-  document.querySelector('h3.restaurant').innerText = ramen.restaurant;
-  document.getElementById('rating-display').innerText = String(ramen.rating);
-  document.getElementById('comment-display').innerText = ramen.comment;
+function handleAllDetails(ramen) {
+  updateRamenDetails(ramen);
+  updateRatingDetails(ramen);
 }
 
-function newRamenData() {
-  const inputNodes = document.querySelectorAll('#new-ramen input:not([type="submit"]), #new-ramen textarea');
-  const formData = new FormDataObj(inputNodes);
-  formData.id = idCount + 1;
-  idCount++;
-  return formData;
+function handleEdits(edits) {
+  updateRatingDetails(edits);
+  updateMenuItemDetails(edits);
 }
 
-// server interaction functions
+function updateRamenDetails({id, name, restaurant, image}) {
+  const ramenImg = document.querySelector('img.detail-image');
+  const imgDesc = `${name} :: ${restaurant}`;
+  ramenImg.src = image;
+  ramenImg.alt = imgDesc;
+  ramenImg.title = imgDesc;
+  ramenImg.dataset.id = id;
+  document.querySelector('h2.name').innerText = name;
+  document.querySelector('h3.restaurant').innerText = restaurant;
+}
+
+function updateRatingDetails({rating, comment}) {
+  document.getElementById('rating-display').innerText = rating;
+  document.getElementById('comment-display').innerText = comment;
+}
+
+function updateMenuItemDetails({rating, comment}) {
+  const ramenId = document.querySelector('img.detail-image').dataset.id;
+  const menuItem = document.querySelector(`[data-id="${ramenId}"]`);
+  menuItem.dataset.rating = rating;
+  menuItem.dataset.comment = comment;
+}
+
+const ensureDataType = string => isNaN(Number(string)) ? string : Number(string);
+
+// SERVER INTERACTION FUNCTIONS
 
 function displayRamens() {
-  fetch(apiAddr)
-    .then(res => res.json())
-    .then(data => handleInitialDisplay(data))
+  fetch(serverUrl)
+    .then(res => {
+      if (!res.ok) {
+      throw new Error('Server response not OK: ', res.statusText);
+      } else {
+      return res.json();
+      }
+    })
+    .then(res => handleInitialDisplay(res))
+    .catch(error => console.log('Error in GET operation: ', error))
 }
 
-function getRamenDetail(id) {
-  fetch(`${apiAddr}/${id}`)
-  .then(res => res.json())
-  .then(ramenData => detailUpdate(ramenData))
+function pushNewRamen(ramenData) {
+  const serverData = new ServerObj('POST', ramenData);
+  fetch(serverUrl, serverData)
+    .then(res => {
+      if (!res.ok) {
+       throw new Error('Server response not OK: ', res.statusText);
+      } else {
+      return res.json();
+      }
+    })
+    .then(res => console.log('Success! ', res))
+    .catch(error => console.log('Error in POST operation: ', error))
 }
 
-// classes
+function pushEdits(ramenData) {
+  const serverData = new ServerObj('PATCH', ramenData);
+  fetch(`${serverUrl}/${ramenData.id}`, serverData)
+    .then(res => {
+      if (!res.ok) {
+      throw new Error('Server response not OK: ', res.statusText);
+      } else {
+      return res.json();
+      }
+    })
+    .then(res => console.log('Success! ', res))
+    .catch(error => console.log('Error in PATCH operation: ', error))
+}
 
-class MenuItem {
-  constructor(data) {
+// CLASSES
+
+class MenuElement {
+  constructor(ramen) {
+    const imgDesc = `${ramen.name} :: ${ramen.restaurant}`;
     this.item = document.createElement('img');
-    this.item.src = data.image;
-    const {image: _, ...datasetObj} = data;
+    this.item.src = ramen.image;
+    this.item.alt = imgDesc;
+    this.item.title = imgDesc;
+
+    // declare variable datasetObj and populate with all ramen data except for image
+    const {image: _, ...datasetObj} = ramen;
+
     for (const key in datasetObj) this.item.dataset[key] = datasetObj[key];
     this.item.addEventListener('click', handleClick)
   }
@@ -88,10 +151,34 @@ class MenuItem {
 }
 
 class FormDataObj {
-  constructor(formData) {
-    Array.from(formData).forEach(element => this[element.id.substring(4)] = element.value)
+  constructor(formId) {
+    const nodeList = document.querySelectorAll(`#${formId} input:not([type="submit"]), #${formId} textarea`);
+    Array.from(nodeList).forEach(element => this[element.id.substring(4)] = ensureDataType(element.value));
+
+    // append id to objects with less than 5 keys (edits)
+    if (Object.keys(this).length < 5) this.id = document.querySelector('#ramen-detail img').dataset.id;
   }
 }
+
+class ServerObj {
+  constructor(method, ramenData) {
+    this.method = method;
+    this.headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    };
+    this.body = JSON.stringify(ramenData);
+  }
+}
+
+// INITIALIZATION FUNCTION
+
+function main() {
+  addSubmitListener();
+  displayRamens();
+}
+
+// INITIALIZATION EVENT LISTENER
 
 document.addEventListener('DOMContentLoaded', main);
 
